@@ -13,9 +13,12 @@
 
 import os
 
+import six.moves.urllib.parse as urlparse
+
 from pifpaf import drivers
 from pifpaf.drivers import gnocchi
 from pifpaf.drivers import postgresql
+from pifpaf.drivers import mysql
 
 
 class AodhDriver(drivers.Driver):
@@ -63,13 +66,25 @@ class AodhDriver(drivers.Driver):
     def _setUp(self):
         super(AodhDriver, self)._setUp()
 
-        if self.database_url is None:
-            pg = self.useFixture(
+        if self.database_url:
+            url = urlparse.urlparse(self.database_url)
+            scheme = url.scheme.split('+')[0]
+        else:
+            scheme = "postgresql"
+
+        if scheme == "postgresql":
+            db = self.useFixture(
                 postgresql.PostgreSQLDriver(port=self.database_port))
-            self.database_url = pg.url
+        elif scheme == "mysql":
+            db = self.useFixture(mysql.MySQLDriver())
+        else:
+            raise RuntimeError("Unsupported database url '%s'" % scheme)
+
+        self.database_url = db.url
 
         g = self.useFixture(gnocchi.GnocchiDriver(
             port=self.gnocchi_port,
+            indexer_url=self.database_url,
             indexer_port=self.gnocchi_indexer_port,
         ))
 
