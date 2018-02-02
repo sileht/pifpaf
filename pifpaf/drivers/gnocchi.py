@@ -14,6 +14,7 @@ import os
 import shutil
 import uuid
 from distutils import spawn
+from distutils import version
 
 import click
 
@@ -186,24 +187,28 @@ url = %s""" % (self.debug,
                           wait_for_line=("(Resource .* already exists"
                                          "|Created resource )"))
 
-        args = [
-            "uwsgi",
-            "--http", "localhost:%d" % self.port,
-            "--wsgi-file", spawn.find_executable("gnocchi-api"),
-            "--master",
-            "--die-on-term",
-            "--lazy-apps",
-            "--processes", "4",
-            "--no-orphans",
-            "--enable-threads",
-            "--chdir", self.tempdir,
-            "--add-header", "Connection: close",
-            "--pyargv", "--config-file=%s" % conffile,
-        ]
+        _, v = self._exec(["gnocchi-api", "--version"], stdout=True)
+        if version.LooseVersion(v) < version.LooseVersion("4.1.0"):
+            args = [
+                "uwsgi",
+                "--http", "localhost:%d" % self.port,
+                "--wsgi-file", spawn.find_executable("gnocchi-api"),
+                "--master",
+                "--die-on-term",
+                "--lazy-apps",
+                "--processes", "4",
+                "--no-orphans",
+                "--enable-threads",
+                "--chdir", self.tempdir,
+                "--add-header", "Connection: close",
+                "--pyargv", "--config-file=%s" % conffile,
+            ]
 
-        virtual_env = os.getenv("VIRTUAL_ENV")
-        if virtual_env is not None:
-            args.extend(["-H", virtual_env])
+            virtual_env = os.getenv("VIRTUAL_ENV")
+            if virtual_env is not None:
+                args.extend(["-H", virtual_env])
+        else:
+            args = ["gnocchi-api", "--config-file=%s" % conffile]
 
         c, _ = self._exec(args,
                           wait_for_line="WSGI app 0 \(mountpoint=''\) ready")
