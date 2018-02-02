@@ -239,6 +239,7 @@ class RunGroup(click.MultiCommand):
                       "echo 'No PID found in $%(prefix)s_PID'; return -1; "
                       "fi; "
                       "if kill $%(prefix)s_PID; then "
+                      "wait $%(prefix)s_PID; "
                       "_PS1=$%(prefix)s_OLD_PS1; "
                       "unset %(vars)s; "
                       "PS1=$_PS1; unset _PS1; "
