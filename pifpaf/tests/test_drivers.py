@@ -34,6 +34,7 @@ from pifpaf.drivers import artemis
 from pifpaf.drivers import ceph
 from pifpaf.drivers import consul
 from pifpaf.drivers import couchdb
+from pifpaf.drivers import docker
 from pifpaf.drivers import elasticsearch
 from pifpaf.drivers import etcd
 from pifpaf.drivers import fakes3
@@ -546,3 +547,23 @@ class TestDrivers(testtools.TestCase):
             except RuntimeError as e:
                 self.skipTest(str(e))
         return tmp_rootdir
+
+    @testtools.skipUnless(spawn.find_executable("docker"),
+                          "Docker not found")
+    def test_docker(self):
+        a = self.useFixture(docker.DockerDriver(image="consul"))
+
+        self.assertEqual("8300", os.getenv("PIFPAF_DOCKER_PORT_EXPOSED"))
+        self.assertEqual(a.port, os.getenv("PIFPAF_DOCKER_PORT"))
+        self.assertEqual("0.0.0.0", os.getenv("PIFPAF_DOCKER_BIND"))
+
+        self.assertEqual("8300", os.getenv("PIFPAF_DOCKER_PORT_EXPOSED_0"))
+        self.assertEqual(a.port, os.getenv("PIFPAF_DOCKER_PORT_0"))
+        self.assertEqual("0.0.0.0", os.getenv("PIFPAF_DOCKER_BIND_0"))
+
+        self.assertEqual("8301", os.getenv("PIFPAF_DOCKER_PORT_EXPOSED_1"))
+        self.assertEqual("0.0.0.0", os.getenv("PIFPAF_DOCKER_BIND_1"))
+
+        self.assertTrue(os.getenv("PIFPAF_URL").startswith(
+            "docker://0.0.0.0:%s" % a.port
+        ))
